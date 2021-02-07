@@ -1,0 +1,10 @@
+coloredlogs
+connexion
+eventlet
+flask
+
+# requirements to build the docs
+pydata-sphinx-theme
+sphinx
+sphinx-copybutton
+sphinxcontrib-redoc

@@ -1,0 +1,358 @@
+openapi: 3.0.3
+
+info:
+  title: Mone the Bookkeeper
+  description: |-
+    Mone is a bookkeeper helping you to track your transactions from one account
+    to another. Budgets provide additional help to track your spendings.
+  version: 0.0.1
+
+servers:
+  - url: 'https://127.0.0.1:5000/api'
+    description: Development server
+
+paths:
+  /account:
+    get:
+      tags:
+        - account
+      summary: Return the book's accounts
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+    post:
+      tags:
+        - account
+      summary: Add an account to the book
+      description: |-
+        Create a new account, add it to the book and redirect to the
+        book on success.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Account'
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+        '400':
+          description: Incomplete account request
+  /account/{uuid}:
+    delete:
+      tags:
+        - account
+      summary: Delete an account
+      description: |-
+        Delete the account identified by it's *uuid*. All transactions booked on
+        the account can be moved to the *replacement* account.
+      parameters:
+        - name: uuid
+          in: path
+          description: The identifier of the account to be deleted.
+          required: true
+          schema:
+            type: string
+        - name: replacement
+          in: query
+          description: |-
+            The identifier of the account to which all transaction of the
+            deleted account should be rebooked.
+          required: false
+          schema:
+            type: string
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+  /book:
+    get:
+      tags:
+        - book
+      summary: Return the book
+      parameters:
+        - name: full
+          in: query
+          description: True if the book should include all transactions.
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+  /budget:
+    get:
+      tags:
+        - budget
+      summary: Return the book's budgets
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Budget'
+    post:
+      tags:
+        - budget
+      summary: Add a budget to the book
+      description: |-
+        Create a new budget, add it to the book and redirect to the
+        book on success.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Budget'
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+        '400':
+          description: Incomplete budget request
+  /budget/{uuid}:
+    delete:
+      tags:
+        - budget
+      summary: Delete a budget
+      description: |-
+        Delete the budget identified by it's *uuid*. All transactions booked on
+        the budget can be moved to the *replacement* budget.
+      parameters:
+        - name: uuid
+          in: path
+          description: The identifier of the budget to be deleted.
+          required: true
+          schema:
+            type: string
+        - name: replacement
+          in: query
+          description: |-
+            The identifier of the budget to which all transaction of the deleted
+            budget should be rebooked.
+          required: false
+          schema:
+            type: string
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+  /transaction:
+    get:
+      tags:
+        - transaction
+      summary: Return the book's transactions
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+    post:
+      tags:
+        - transaction
+      summary: Add a transaction to the book
+      description: |-
+        Add the transaction to the book. The bookkeeper books the transaction to
+        the corresponding receiver and source accounts and budgets. On success,
+        redirect to the full updated book.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Transaction'
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+        '400':
+          description: Incomplete transaction request
+  /transaction/{uuid}:
+    delete:
+      tags:
+        - transaction
+      summary: Delete a transaction
+      description: |-
+        Delete the transaction identified by it's *uuid*. The transaction is
+        also removed from all accounts and budgets to which it was booked. On
+        success, redirect to the updated full book.
+      parameters:
+        - name: uuid
+          in: path
+          description: The identifier of the transaction to be deleted.
+          required: true
+          schema:
+            type: string
+      responses:
+        '303':
+          $ref: '#/components/responses/RedirectBook'
+
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: The unique identifier of an account.
+          readOnly: true
+          example: 9323dfb6-6fd3-11eb-8b50-1e00da345a48
+        name:
+          type: string
+          description: A human readable name of the account.
+          example: Bank Savings
+        extern:
+          type: boolean
+          description: |-
+            True if the account is not part of the book's balance. For example,
+            if you buy something in a shop, the cash flow goes from your
+            (internal) accounts to the shop's account which is an external
+            account.
+        balance:
+          type: number
+          description: The account's balance of in and out going money.
+          example: 30600
+      required:
+        - balance
+        - extern
+        - name
+        - uuid
+    Budget:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: The unique identifier of a budget.
+          readOnly: true
+          example: 3e334bce-6f0e-11eb-a197-1e00da345a48
+        name:
+          type: string
+          description: A human readable name of the budget.
+          example: Living Costs
+        balance:
+          type: number
+          description: The remaining money with respect to the budget.
+          example: 450
+        budget:
+          type: number
+          description: The set budget.
+          example: 1000
+      required:
+        - balance
+        - budget
+        - name
+        - uuid
+    Book:
+      type: object
+      properties:
+        accounts:
+          type: array
+          description: The accounts belonging to the book.
+          items:
+            $ref: '#/components/schemas/Account'
+        balance:
+          type: number
+          description: |-
+            The balance of all accounts, excluding the external accounts.
+        budgets:
+          type: array
+          description: The budget of the book.
+          items:
+            $ref: '#/components/schemas/Budget'
+        transactions:
+          type: array
+          description: The transactions booked by the bookkeeper.
+          items:
+            $ref: '#/components/schemas/Transaction'
+      required:
+      - accounts
+      - balance
+      - budgets
+    Transaction:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: The unique identifier of a transaction.
+          readOnly: true
+          example: b80c56a2-787d-11eb-a0cf-1e00da345a49
+        date:
+          type: string
+          description: |-
+            The date when the transaction was performed as defined by
+            `full-date` in
+            [RFC3339](https://tools.ietf.org/html/rfc3339#section-5.6).
+          format: date
+          example: '2021-03-02'
+        description:
+          type: string
+          description: A brief description of the transaction.
+          example: Groceries
+        receiver:
+          type: array
+          items:
+            type: string
+            description: |-
+              The unique identifier of the accounts and budgets which are the
+              receiver of the transferred money.
+          example:
+            - 9323dfb6-6fd3-11eb-8b50-1e00da345a48
+            - 39272f88-7a62-11eb-8755-1e00da345a49
+        sources:
+          type: array
+          items:
+            type: string
+            description: |-
+              The unique identifier of the accounts and budgets from which the
+              money if transferred.
+          example:
+            - 659c5f3e-7a62-11eb-b613-1e00da345a49
+            - 4d15b492-7a62-11eb-bf53-1e00da345a49
+        tags:
+          type: array
+          items:
+            type: string
+          description: The tags which can be used to group transactions.
+          example:
+            - living costs
+            - food
+        value:
+          type: number
+          description: The value of the transferred money.
+          example: 54.39
+      required:
+        - date
+        - description
+        - receiver
+        - sources
+        - tags
+        - uuid
+        - value
+  responses:
+    RedirectBook:
+      description: Redirect to get the updated book
+      headers:
+        Location:
+          description: The URL to follow with a GET request
+          schema:
+            type: string
+
+tags:
+  - name: account
+    description: Account operations
+  - name: book
+    description: Book operations
+  - name: budget
+    description: Budget operations
+  - name: transaction
+    description: Transaction operations

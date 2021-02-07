@@ -1,0 +1,9 @@
+*.ipynb
+venv
+
+__pycache__
+build/
+
+# generated when building the doc
+doc/build
+doc/source/reference/generated/
